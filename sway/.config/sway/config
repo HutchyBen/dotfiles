@@ -21,7 +21,7 @@ set $menu  dmenu_path | bemenu --fn "JetBrainsMono Nerd Font Mono 10" -H25 --hp 
 
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
-output * bg /usr/share/backgrounds/void-black-4k.png fill
+output * bg ~/.local/share/backgrounds/void-black-4k.png fill
 #
 # Example configuration:
 #
@@ -66,7 +66,7 @@ seat seat0 xcursor_theme Adwaita 24
 #
 # Basics:
 #
-    bindsym $mod+Shift+s exec grim -g "$(slurp -d)" /home/ben/Screenshot.png 
+    bindsym $mod+Shift+s exec grim -g "$(slurp -d)" - | wl-copy 
     # Start a terminal
     bindsym $mod+Return exec $term
 
