@@ -91,7 +91,25 @@ func getBattery() Block {
 	b.SeparatorBlockWidth = 21
 	return b
 }
+func getVolume() Block {
+	b := Block{}
+	var volume string
+	
+	cmd, err := exec.Command("pactl", "get-sink-volume", "@DEFAULT_SINK@").Output()
+	if err != nil {
+		return Block{}
+	}
 
+	volume = strings.Split(string(cmd), "/")[1]
+
+	volume = strings.TrimSpace(volume)
+	b.FullText =  fmt.Sprintf("Volume %s",volume  )
+	b.Name = "volume"
+	b.MinWidth = len("Volume 100%")
+	b.Align = "center"
+	b.SeparatorBlockWidth = 21
+	return b
+}
 func getBrightness() Block {
 	b := Block{}
 	brightness, err := os.ReadFile("/sys/class/backlight/intel_backlight/brightness")
@@ -111,6 +129,21 @@ func getBrightness() Block {
 	return b
 }
 
+
+func inputVolume(input Input) {
+	if input.Button == 4 {
+		err := exec.Command("pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%").Run()
+		if err != nil {
+			log.Println(err)
+		}
+	} else if input.Button == 5 {
+		err := exec.Command("pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%").Run()
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
 func inputBrightness(input Input) {
 	if input.Button == 4 {
 		err := exec.Command("/home/ben/.config/sway/systool/systool", "brightness", "+1000").Run()
@@ -124,7 +157,6 @@ func inputBrightness(input Input) {
 		}
 	}
 }
-
 func getTime() Block {
 	b := Block{}
 	now := time.Now()
@@ -146,6 +178,9 @@ func ProcessInput(inputStr string) {
 	switch (input.Name) {
 	case "brightness":
 		inputBrightness(input)
+		break
+	case "volume":
+		inputVolume(input)
 		break
 	}
 }
@@ -180,7 +215,7 @@ func main() {
 		}
 	}()
 	for {	
-		blocks := []Block{getBrightness(), getBattery(), getTime()}
+		blocks := []Block{getVolume(), getBrightness(), getBattery(), getTime()}
 		data, _ := json.MarshalIndent(blocks, "", "    ")
 		fmt.Println(string(data))
 

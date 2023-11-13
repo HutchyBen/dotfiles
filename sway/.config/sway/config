@@ -92,6 +92,15 @@ seat seat0 xcursor_theme Adwaita 24
     bindsym $mod+XF86MonBrightnessUp exec echo 96000 > /sys/class/backlight/intel_backlight/brightness
     bindsym $mod+XF86MonBrightnessDown exec echo 0 > /sys/class/backlight/intel_backlight/brightness
     bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+
+bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +5%
+
+# Decrease volume by 5%
+bindsym XF86AudioLowerVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ -5%
+
+# Mute volume
+bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle
+
 #
 # Moving around:
 #
