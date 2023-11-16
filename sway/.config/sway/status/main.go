@@ -3,132 +3,116 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/lucasb-eyer/go-colorful"
 	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
-	"github.com/lucasb-eyer/go-colorful"
 )
 
 type Block struct {
-	FullText           string `json:"full_text,omitempty"`
-	ShortText          string `json:"short_text,omitempty"`
-	Color              string `json:"color,omitempty"`
-	Background         string `json:"background,omitempty"`
-	Border             string `json:"border,omitempty"`
-	BorderTop          int    `json:"border_top,omitempty"`
-	BorderRight        int    `json:"border_right,omitempty"`
-	BorderBottom       int    `json:"border_bottom,omitempty"`
-	BorderLeft         int    `json:"border_left,omitempty"`
-	MinWidth           int    `json:"min_width,omitempty"`
-	Align              string `json:"align,omitempty"`
-	Urgent             bool   `json:"urgent,omitempty"`
-	Name               string `json:"name,omitempty"`
-	Instance           string `json:"instance,omitempty"`
-	Separator          bool   `json:"separator,omitempty"`
+	FullText            string `json:"full_text,omitempty"`
+	ShortText           string `json:"short_text,omitempty"`
+	Color               string `json:"color,omitempty"`
+	Background          string `json:"background,omitempty"`
+	Border              string `json:"border,omitempty"`
+	BorderTop           int    `json:"border_top,omitempty"`
+	BorderRight         int    `json:"border_right,omitempty"`
+	BorderBottom        int    `json:"border_bottom,omitempty"`
+	BorderLeft          int    `json:"border_left,omitempty"`
+	MinWidth            int    `json:"min_width,omitempty"`
+	Align               string `json:"align,omitempty"`
+	Urgent              bool   `json:"urgent,omitempty"`
+	Name                string `json:"name,omitempty"`
+	Instance            string `json:"instance,omitempty"`
+	Separator           bool   `json:"separator,omitempty"`
 	SeparatorBlockWidth int    `json:"separator_block_width,omitempty"`
-	Markup             string `json:"markup,omitempty"`
+	Markup              string `json:"markup,omitempty"`
 }
 
 type Input struct {
-	Name       string   `json:"name"`
-	Instance   string   `json:"instance"`
-	Button     int      `json:"button"`
-	Modifiers  []string `json:"modifiers"`
-	X          int      `json:"x"`
-	Y          int      `json:"y"`
-	RelativeX  int      `json:"relative_x"`
-	RelativeY  int      `json:"relative_y"`
-	OutputX    int      `json:"output_x"`
-	OutputY    int      `json:"output_y"`
-	Width      int      `json:"width"`
-	Height     int      `json:"height"`
+	Name      string   `json:"name"`
+	Instance  string   `json:"instance"`
+	Button    int      `json:"button"`
+	Modifiers []string `json:"modifiers"`
+	X         int      `json:"x"`
+	Y         int      `json:"y"`
+	RelativeX int      `json:"relative_x"`
+	RelativeY int      `json:"relative_y"`
+	OutputX   int      `json:"output_x"`
+	OutputY   int      `json:"output_y"`
+	Width     int      `json:"width"`
+	Height    int      `json:"height"`
 }
 
-func getBattery() Block {
-	b := Block{}
-	capa, err := os.ReadFile("/sys/class/power_supply/BAT1/capacity")
-	if err != nil {
-		return Block{}
-	}
-
-	status, err := os.ReadFile("/sys/class/power_supply/BAT1/status")
-	if err != nil {
-		return Block{}
-	}
-
-	statusStr := strings.TrimSpace(string(status))
-	capacityStr := strings.TrimSpace(string(capa))
-	
-	if capacityStr == "100" {
-		b.FullText = "Battery Full"
-	} else {
-		switch statusStr {
-		case "Charging":
-			b.FullText = fmt.Sprintf("+ Battery %s%%", capacityStr)
-			break
-		case "Discharging":
-			b.FullText = fmt.Sprintf("- Battery %s%%", capacityStr)
-			break
-		default:
-			b.FullText = fmt.Sprintf("%s %s%%", statusStr, capacityStr)
-			break
+func getBattery(b *Block) {
+	for {
+		capa, err := os.ReadFile("/sys/class/power_supply/BAT1/capacity")
+		if err != nil {
+			return
 		}
+
+		status, err := os.ReadFile("/sys/class/power_supply/BAT1/status")
+		if err != nil {
+			return
+		}
+
+		statusStr := strings.TrimSpace(string(status))
+		capacityStr := strings.TrimSpace(string(capa))
+
+		if capacityStr == "100" {
+			b.FullText = "Battery Full"
+		} else {
+			switch statusStr {
+			case "Charging":
+				b.FullText = fmt.Sprintf("+ Battery %s%%", capacityStr)
+				break
+			case "Discharging":
+				b.FullText = fmt.Sprintf("- Battery %s%%", capacityStr)
+				break
+			default:
+				b.FullText = fmt.Sprintf("%s %s%%", statusStr, capacityStr)
+				break
+			}
+		}
+
+		// calculate color
+		cInt, _ := strconv.Atoi(capacityStr)
+		c1, _ := colorful.Hex("#f38ba8")
+		c2, _ := colorful.Hex("#a6e3a1")
+		blend := c1.BlendHsv(c2, float64(cInt)/100)
+
+		b.Color = blend.Hex()
+		b.MinWidth = len("- Battery 100%") // this will surely get optimized
+		b.Name = "battery"
+		b.Align = "center"
+		b.SeparatorBlockWidth = 21
+		time.Sleep(time.Second * 5)
 	}
-
-	// calculate color
-	cInt, _ := strconv.Atoi(capacityStr)
-    	c1, _ := colorful.Hex("#f38ba8")
-    	c2, _ := colorful.Hex("#a6e3a1")
-	blend := c1.BlendHsv(c2, float64(cInt) / 100)
-
-	b.Color = blend.Hex()
-	b.MinWidth = len("- Battery 100%") // this will surely get optimized
-	b.Name = "battery"
-	b.Align = "center"
-	b.SeparatorBlockWidth = 21
-	return b
 }
-func getVolume() Block {
-	b := Block{}
-	var volume string
-	
-	cmd, err := exec.Command("pactl", "get-sink-volume", "@DEFAULT_SINK@").Output()
-	if err != nil {
-		return Block{}
+func getVolume(b *Block) {
+	for {
+
+		var volume string
+
+		cmd, err := exec.Command("pactl", "get-sink-volume", "@DEFAULT_SINK@").Output()
+		if err != nil {
+			return
+		}
+
+		volume = strings.Split(string(cmd), "/")[1]
+
+		volume = strings.TrimSpace(volume)
+		b.FullText = fmt.Sprintf("Volume %s", volume)
+		b.Name = "volume"
+		b.MinWidth = len("Volume 100%")
+		b.Align = "center"
+		b.SeparatorBlockWidth = 21
+		time.Sleep(250 * time.Millisecond)
 	}
-
-	volume = strings.Split(string(cmd), "/")[1]
-
-	volume = strings.TrimSpace(volume)
-	b.FullText =  fmt.Sprintf("Volume %s",volume  )
-	b.Name = "volume"
-	b.MinWidth = len("Volume 100%")
-	b.Align = "center"
-	b.SeparatorBlockWidth = 21
-	return b
 }
-func getBrightness() Block {
-	b := Block{}
-	brightness, err := os.ReadFile("/sys/class/backlight/intel_backlight/brightness")
-	maxBrightness, err := os.ReadFile("/sys/class/backlight/intel_backlight/max_brightness")
-	if err != nil {
-		return Block{}
-	}
-
-	brightnessInt, _ := strconv.Atoi(strings.TrimSpace(string(brightness)))
-	maxBrightnessInt, _ := strconv.Atoi(strings.TrimSpace(string(maxBrightness)))
-
-	b.FullText =  fmt.Sprintf("Brightness %d%%", int((float32(brightnessInt) / float32(maxBrightnessInt)) * 100))
-	b.Name = "brightness"
-	b.MinWidth = len("Brightness 100%")
-	b.Align = "center"
-	b.SeparatorBlockWidth = 21
-	return b
-}
-
 
 func inputVolume(input Input) {
 	if input.Button == 4 {
@@ -141,6 +125,27 @@ func inputVolume(input Input) {
 		if err != nil {
 			log.Println(err)
 		}
+	}
+}
+
+
+func getBrightness(b *Block) {
+	for {
+		brightness, err := os.ReadFile("/sys/class/backlight/intel_backlight/brightness")
+		maxBrightness, err := os.ReadFile("/sys/class/backlight/intel_backlight/max_brightness")
+		if err != nil {
+			return
+		}
+
+		brightnessInt, _ := strconv.Atoi(strings.TrimSpace(string(brightness)))
+		maxBrightnessInt, _ := strconv.Atoi(strings.TrimSpace(string(maxBrightness)))
+
+		b.FullText = fmt.Sprintf("Brightness %d%%", int((float32(brightnessInt)/float32(maxBrightnessInt))*100))
+		b.Name = "brightness"
+		b.MinWidth = len("Brightness 100%")
+		b.Align = "center"
+		b.SeparatorBlockWidth = 21
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
@@ -157,15 +162,18 @@ func inputBrightness(input Input) {
 		}
 	}
 }
-func getTime() Block {
-	b := Block{}
-	now := time.Now()
-	
-	b.FullText = now.Format("15:04:05")
-	b.Name = "time"
-	b.Align = "center"
-	b.SeparatorBlockWidth = 21
-	return b
+
+
+func getTime(b *Block) {
+	for {
+		now := time.Now()
+
+		b.FullText = now.Format("15:04:05")
+		b.Name = "time"
+		b.Align = "center"
+		b.SeparatorBlockWidth = 21
+		time.Sleep(time.Second)
+	}
 }
 
 func ProcessInput(inputStr string) {
@@ -175,7 +183,7 @@ func ProcessInput(inputStr string) {
 	if err != nil {
 		log.Println(err)
 	}
-	switch (input.Name) {
+	switch input.Name {
 	case "brightness":
 		inputBrightness(input)
 		break
@@ -186,14 +194,13 @@ func ProcessInput(inputStr string) {
 }
 
 func main() {
-	logFile, _ := os.OpenFile("/tmp/status.log", os.O_RDWR | os.O_CREATE, 0666)
+	logFile, _ := os.OpenFile("/tmp/status.log", os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(logFile)
-
 
 	fmt.Println("{\"version\":1, \"click_events\": true}")
 	fmt.Print("[")
-	
-	go func () {
+
+	go func() {
 		brackets := 0
 		json := ""
 		for {
@@ -214,12 +221,25 @@ func main() {
 			}
 		}
 	}()
-	for {	
-		blocks := []Block{getVolume(), getBrightness(), getBattery(), getTime()}
+
+	// Async Shitstains
+
+	var Volume Block
+	var Brightness Block
+	var Battery Block
+	var Time Block
+
+	go getVolume(&Volume)
+	go getBrightness(&Brightness)
+	go getBattery(&Battery)
+	go getTime(&Time)
+
+	for {
+		blocks := []Block{Volume, Brightness, Battery, Time}
 		data, _ := json.MarshalIndent(blocks, "", "    ")
 		fmt.Println(string(data))
 
 		fmt.Print(",")
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 }
