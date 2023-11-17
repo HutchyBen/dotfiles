@@ -3,13 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/lucasb-eyer/go-colorful"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/lucasb-eyer/go-colorful"
 )
 
 type Block struct {
@@ -47,7 +49,45 @@ type Input struct {
 	Height    int      `json:"height"`
 }
 
+type Config struct {
+	MonzoPlaygroundKey string `json:"monzo_playground_key"`
+}
+
+var config Config
+
+func getMonzo(b *Block) {
+	var accounts struct {
+		Accounts []struct{
+			ID string `json:"id"`
+		} `json:"accounts"`
+	}	
+	req, _ := http.NewRequest("GET", "https://api.monzo.com/accounts", nil)
+	req.Header.Add("Authorization", "Bearer " + config.MonzoPlaygroundKey)
+	
+	res, _ := http.DefaultClient.Do(req)
+	json.NewDecoder(res.Body).Decode(&accounts)
+	for {
+		var Balance struct {
+			TotalBalance int `json:"total_balance"`
+		}
+
+		req, _ := http.NewRequest("GET", "https://api.monzo.com/balance?account_id=" + accounts.Accounts[0].ID, nil)
+		req.Header.Add("Authorization", "Bearer " + config.MonzoPlaygroundKey)
+		res, _  = http.DefaultClient.Do(req)
+		json.NewDecoder(res.Body).Decode(&Balance)
+
+		b.Name = "money"
+		b.Align = "center"
+		b.SeparatorBlockWidth = 21
+		b.FullText = fmt.Sprintf("Money: £%.2f", float32(Balance.TotalBalance) / 100)
+		time.Sleep(time.Minute*5)
+	}
+}
+
 func getBattery(b *Block) {
+	if b == nil {
+		b = new(Block)
+	}
 	for {
 		capa, err := os.ReadFile("/sys/class/power_supply/BAT1/capacity")
 		if err != nil {
@@ -93,6 +133,9 @@ func getBattery(b *Block) {
 	}
 }
 func getVolume(b *Block) {
+	if b == nil {
+		b = new(Block)
+	}
 	for {
 
 		var volume string
@@ -130,6 +173,9 @@ func inputVolume(input Input) {
 
 
 func getBrightness(b *Block) {
+	if b == nil {
+		b = new(Block)
+	}
 	for {
 		brightness, err := os.ReadFile("/sys/class/backlight/intel_backlight/brightness")
 		maxBrightness, err := os.ReadFile("/sys/class/backlight/intel_backlight/max_brightness")
@@ -165,6 +211,9 @@ func inputBrightness(input Input) {
 
 
 func getTime(b *Block) {
+	if b == nil {
+		b = new(Block)
+	}
 	for {
 		now := time.Now()
 
@@ -196,6 +245,8 @@ func ProcessInput(inputStr string) {
 func main() {
 	logFile, _ := os.OpenFile("/tmp/status.log", os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(logFile)
+    configFile, _ := os.Open("/home/ben/.config/sway/status/config.json")
+	json.NewDecoder(configFile).Decode(&config)
 
 	fmt.Println("{\"version\":1, \"click_events\": true}")
 	fmt.Print("[")
@@ -223,19 +274,19 @@ func main() {
 	}()
 
 	// Async Shitstains
-
+	var Monzo Block
 	var Volume Block
 	var Brightness Block
 	var Battery Block
 	var Time Block
 
+	go getMonzo(&Monzo)
 	go getVolume(&Volume)
 	go getBrightness(&Brightness)
 	go getBattery(&Battery)
 	go getTime(&Time)
-
 	for {
-		blocks := []Block{Volume, Brightness, Battery, Time}
+		blocks := []Block{Monzo ,Volume, Brightness, Battery, Time}
 		data, _ := json.MarshalIndent(blocks, "", "    ")
 		fmt.Println(string(data))
 
