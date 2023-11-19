@@ -57,13 +57,13 @@ var config Config
 
 func getMonzo(b *Block) {
 	var accounts struct {
-		Accounts []struct{
+		Accounts []struct {
 			ID string `json:"id"`
 		} `json:"accounts"`
-	}	
+	}
 	req, _ := http.NewRequest("GET", "https://api.monzo.com/accounts", nil)
-	req.Header.Add("Authorization", "Bearer " + config.MonzoPlaygroundKey)
-	
+	req.Header.Add("Authorization", "Bearer "+config.MonzoPlaygroundKey)
+
 	res, _ := http.DefaultClient.Do(req)
 	json.NewDecoder(res.Body).Decode(&accounts)
 	for {
@@ -71,16 +71,16 @@ func getMonzo(b *Block) {
 			TotalBalance int `json:"total_balance"`
 		}
 
-		req, _ := http.NewRequest("GET", "https://api.monzo.com/balance?account_id=" + accounts.Accounts[0].ID, nil)
-		req.Header.Add("Authorization", "Bearer " + config.MonzoPlaygroundKey)
-		res, _  = http.DefaultClient.Do(req)
+		req, _ := http.NewRequest("GET", "https://api.monzo.com/balance?account_id="+accounts.Accounts[0].ID, nil)
+		req.Header.Add("Authorization", "Bearer "+config.MonzoPlaygroundKey)
+		res, _ = http.DefaultClient.Do(req)
 		json.NewDecoder(res.Body).Decode(&Balance)
 
 		b.Name = "money"
 		b.Align = "center"
 		b.SeparatorBlockWidth = 21
-		b.FullText = fmt.Sprintf("Money: £%.2f", float32(Balance.TotalBalance) / 100)
-		time.Sleep(time.Minute*5)
+		b.FullText = fmt.Sprintf("Money: £%.2f", float32(Balance.TotalBalance)/100)
+		time.Sleep(time.Minute * 5)
 	}
 }
 
@@ -171,7 +171,6 @@ func inputVolume(input Input) {
 	}
 }
 
-
 func getBrightness(b *Block) {
 	if b == nil {
 		b = new(Block)
@@ -209,7 +208,6 @@ func inputBrightness(input Input) {
 	}
 }
 
-
 func getTime(b *Block) {
 	if b == nil {
 		b = new(Block)
@@ -245,7 +243,7 @@ func ProcessInput(inputStr string) {
 func main() {
 	logFile, _ := os.OpenFile("/tmp/status.log", os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(logFile)
-    configFile, _ := os.Open("/home/ben/.config/sway/status/config.json")
+	configFile, _ := os.Open("/home/ben/.config/sway/status/config.json")
 	json.NewDecoder(configFile).Decode(&config)
 
 	fmt.Println("{\"version\":1, \"click_events\": true}")
@@ -286,7 +284,11 @@ func main() {
 	go getBattery(&Battery)
 	go getTime(&Time)
 	for {
-		blocks := []Block{Monzo ,Volume, Brightness, Battery, Time}
+		blocks := []Block{Volume, Brightness, Battery, Time}
+		if Monzo.FullText != "" {
+			blocks = append([]Block{Monzo}, blocks...)
+		}
+
 		data, _ := json.MarshalIndent(blocks, "", "    ")
 		fmt.Println(string(data))
 
