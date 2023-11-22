@@ -199,12 +199,12 @@ func getBrightness(b *Block) {
 
 func inputBrightness(input Input) {
 	if input.Button == 4 {
-		err := exec.Command("/home/ben/.config/sway/systool/systool", "brightness", "+1000").Run()
+		err := exec.Command("~/.config/sway/systool/systool", "brightness", "+1000").Run()
 		if err != nil {
 			log.Println(err)
 		}
 	} else if input.Button == 5 {
-		err := exec.Command("/home/ben/.config/sway/systool/systool", "brightness", "-1000").Run()
+		err := exec.Command("~/.config/sway/systool/systool", "brightness", "-1000").Run()
 		if err != nil {
 			log.Println(err)
 		}
@@ -246,7 +246,7 @@ func ProcessInput(inputStr string) {
 func main() {
 	logFile, _ := os.OpenFile("/tmp/status.log", os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(logFile)
-	configFile, _ := os.Open("/home/ben/.config/sway/status/config.json")
+	configFile, _ := os.Open("~/.config/sway/status/config.json")
 	json.NewDecoder(configFile).Decode(&config)
 
 	fmt.Println("{\"version\":1, \"click_events\": true}")
