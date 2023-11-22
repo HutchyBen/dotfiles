@@ -61,11 +61,14 @@ func getMonzo(b *Block) {
 			ID string `json:"id"`
 		} `json:"accounts"`
 	}
-	req, _ := http.NewRequest("GET", "https://api.monzo.com/accounts", nil)
-	req.Header.Add("Authorization", "Bearer "+config.MonzoPlaygroundKey)
-
-	res, _ := http.DefaultClient.Do(req)
-	json.NewDecoder(res.Body).Decode(&accounts)
+	for len(accounts.Accounts) == 0 {
+		req, _ := http.NewRequest("GET", "https://api.monzo.com/accounts", nil)
+		req.Header.Add("Authorization", "Bearer "+config.MonzoPlaygroundKey)
+	
+		res, _ := http.DefaultClient.Do(req)
+		json.NewDecoder(res.Body).Decode(&accounts)
+		time.Sleep(time.Minute)
+	}
 	for {
 		var Balance struct {
 			TotalBalance int `json:"total_balance"`
@@ -73,7 +76,7 @@ func getMonzo(b *Block) {
 
 		req, _ := http.NewRequest("GET", "https://api.monzo.com/balance?account_id="+accounts.Accounts[0].ID, nil)
 		req.Header.Add("Authorization", "Bearer "+config.MonzoPlaygroundKey)
-		res, _ = http.DefaultClient.Do(req)
+		res, _ := http.DefaultClient.Do(req)
 		json.NewDecoder(res.Body).Decode(&Balance)
 
 		b.Name = "money"
